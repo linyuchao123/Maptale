@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maptale — 你的人生地图</title>
+<style>
+  :root {
+    --bg-deep: #050510;
+    --bg-card: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --cyan: #00d4ff;
+    --cyan-dim: rgba(0,212,255,0.15);
+    --gold: #ffd700;
+    --gold-dim: rgba(255,215,0,0.15);
+    --text: #e8eaf6;
+    --text-dim: rgba(232,234,246,0.5);
+    --sidebar-w: 220px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'PingFang SC', 'Noto Sans SC', -apple-system, sans-serif;
+    height: 100vh; overflow: hidden; user-select: none;
+  }
+  #starCanvas { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+  .layout { display:flex; height:100vh; position:relative; z-index:1; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: rgba(5,5,20,0.75);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 20px 0; flex-shrink: 0; z-index:10;
+  }
+  .logo {
+    display:flex; align-items:center; gap:10px;
+    padding:0 20px 20px; border-bottom:1px solid var(--border);
+  }
+  .logo-icon {
+    width:36px; height:36px; border-radius:10px;
+    background:linear-gradient(135deg,var(--cyan),#7b2ff7);
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+  }
+  .logo-text {
+    font-size:18px; font-weight:700; letter-spacing:1px;
+    background:linear-gradient(90deg,var(--cyan),var(--gold));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .user-profile {
+    padding:18px 20px; display:flex; flex-direction:column; align-items:center;
+    border-bottom:1px solid var(--border);
+  }
+  .avatar {
+    width:58px; height:58px; border-radius:50%;
+    background:linear-gradient(135deg,#ff6b6b,#ffd700);
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; margin-bottom:8px;
+    box-shadow:0 0 20px rgba(255,215,0,0.3);
+    cursor:pointer; transition:transform .3s,box-shadow .3s;
+  }
+  .avatar:hover { transform:scale(1.08); box-shadow:0 0 30px rgba(255,215,0,0.5); }
+  .username { font-size:14px; font-weight:600; margin-bottom:3px; }
+  .user-level { font-size:11px; color:var(--gold); }
+
+  .stats-grid {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:8px; padding:14px 14px 0;
+  }
+  .stat-card {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:10px; padding:10px 8px; text-align:center;
+  }
+  .stat-num { font-size:20px; font-weight:700; color:var(--cyan); line-height:1; }
+  .stat-label { font-size:10px; color:var(--text-dim); margin-top:3px; }
+
+  .nav-section { padding:14px 0; flex:1; }
+  .nav-title {
+    font-size:10px; color:var(--text-dim);
+    padding:0 20px; margin-bottom:6px;
+    letter-spacing:1px; text-transform:uppercase;
+  }
+  .nav-item {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 20px; cursor:pointer;
+    transition:all .2s; font-size:13px; color:var(--text-dim);
+    position:relative;
+  }
+  .nav-item:hover { color:var(--text); background:var(--cyan-dim); }
+  .nav-item.active { color:var(--cyan); }
+  .nav-item.active::before {
+    content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+    width:3px; height:60%; background:var(--cyan); border-radius:0 3px 3px 0;
+  }
+  .nav-icon { font-size:15px; width:20px; text-align:center; }
+
+  /* ── Main ── */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* ── Topbar ── */
+  .topbar {
+    height:54px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 22px;
+    background:rgba(5,5,20,0.5); backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .topbar-tabs { display:flex; gap:4px; }
+  .tab-btn {
+    padding:6px 15px; border-radius:8px; cursor:pointer;
+    font-size:13px; font-weight:500; color:var(--text-dim);
+    border:none; background:transparent; transition:all .2s;
+  }
+  .tab-btn:hover { color:var(--text); background:var(--bg-card); }
+  .tab-btn.active { color:var(--cyan); background:var(--cyan-dim); }
+  .topbar-right { display:flex; align-items:center; gap:10px; }
+  .search-box {
+    display:flex; align-items:center; gap:8px;
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:10px; padding:6px 12px;
+    font-size:12px; color:var(--text-dim); cursor:pointer;
+    transition:border-color .2s;
+  }
+  .search-box:hover { border-color:var(--cyan); }
+  .icon-btn {
+    width:32px; height:32px; border-radius:8px;
+    background:var(--bg-card); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; cursor:pointer; transition:all .2s;
+  }
+  .icon-btn:hover { border-color:var(--cyan); background:var(--cyan-dim); }
+
+  /* ── Pages ── */
+  .page { flex:1; position:relative; overflow:hidden; }
+  .page-content { display:none; width:100%; height:100%; animation:pageFade .3s ease; }
+  .page-content.active { display:flex; }
+  @keyframes pageFade { from{opacity:0} to{opacity:1} }
+
+  /* ── MAP PAGE ── */
+  #mapCanvas { position:absolute; inset:0; width:100%; height:100%; }
+
+  .polaroids { position:absolute; inset:0; pointer-events:none; }
+  .polaroid {
+    position:absolute; background:white;
+    padding:7px 7px 24px; border-radius:3px;
+    box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 20px rgba(0,212,255,.2);
+    width:100px; pointer-events:auto; cursor:pointer;
+    transition:transform .3s,box-shadow .3s;
+    animation:float 6s ease-in-out infinite;
+  }
+  .polaroid:hover {
+    transform:scale(1.12) rotate(0deg) !important;
+    box-shadow:0 16px 48px rgba(0,0,0,.6),0 0 30px rgba(0,212,255,.4);
+    z-index:100;
+  }
+  .p-img {
+    width:100%; height:68px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:32px; border-radius:2px;
+  }
+  .p-label { text-align:center; font-size:9px; color:#333; margin-top:3px; font-weight:600; }
+  @keyframes float {
+    0%,100% { transform:translateY(0) rotate(var(--r)); }
+    50%      { transform:translateY(-10px) rotate(var(--r)); }
+  }
+
+  .province-tooltip {
+    position:absolute; bottom:28px; left:50%; transform:translateX(-50%);
+    background:rgba(5,5,20,.88); backdrop-filter:blur(20px);
+    border:1px solid var(--cyan); border-radius:14px;
+    padding:14px 22px; text-align:center;
+    display:none; pointer-events:none;
+  }
+  .province-tooltip.show { display:block; animation:fadeUp .3s ease; }
+  @keyframes fadeUp {
+    from{opacity:0;transform:translateX(-50%) translateY(8px)}
+    to  {opacity:1;transform:translateX(-50%) translateY(0)}
+  }
+  .province-tooltip h3 { font-size:17px; color:var(--gold); margin-bottom:4px; }
+  .province-tooltip p  { font-size:12px; color:var(--text-dim); }
+  .tooltip-btn {
+    margin-top:10px; padding:6px 20px;
+    background:var(--cyan); color:#000; border:none;
+    border-radius:20px; font-size:12px; font-weight:600;
+    cursor:pointer; pointer-events:auto; display:block; margin-inline:auto;
+  }
+  .tooltip-btn:hover { opacity:.8; }
+
+  .explore-progress {
+    position:absolute; top:14px; right:14px;
+    background:rgba(5,5,20,.75); backdrop-filter:blur(16px);
+    border:1px solid var(--border); border-radius:14px;
+    padding:12px 16px; min-width:150px;
+  }
+  .progress-title { font-size:11px; color:var(--text-dim); margin-bottom:7px; }
+  .progress-wrap { background:rgba(255,255,255,.08); border-radius:4px; height:5px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--cyan),var(--gold)); }
+  .progress-pct { font-size:18px; font-weight:700; color:var(--gold); margin-top:5px; }
+
+  .hover-tip {
+    position:absolute; background:rgba(5,5,20,.88); backdrop-filter:blur(10px);
+    border:1px solid var(--cyan); border-radius:10px; padding:7px 12px;
+    pointer-events:none; font-size:12px; display:none;
+    transform:translate(-50%,-130%); white-space:nowrap; z-index:50;
+  }
+  .hover-tip.on { display:block; }
+  .hover-tip strong { color:var(--gold); }
+
+  /* ── DETAIL PAGE ── */
+  .detail-left {
+    width:42%; padding:24px; display:flex; flex-direction:column; gap:16px;
+    border-right:1px solid var(--border);
+  }
+  .detail-header h2 { font-size:26px; font-weight:800; }
+  .detail-header p  { font-size:12px; color:var(--text-dim); margin-top:4px; }
+  .province-visual {
+    flex:1; background:var(--bg-card); border:1px solid var(--border);
+    border-radius:16px; display:flex; align-items:center; justify-content:center;
+    font-size:88px; position:relative; overflow:hidden; min-height:180px;
+  }
+  .province-visual::after {
+    content:''; position:absolute; inset:0;
+    background:radial-gradient(circle,rgba(255,215,0,.1),transparent 70%);
+    animation:pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.04)} }
+  .detail-stats { display:flex; gap:10px; }
+  .d-stat {
+    flex:1; background:var(--bg-card); border:1px solid var(--border);
+    border-radius:12px; padding:13px; text-align:center;
+  }
+  .d-stat .n { font-size:21px; font-weight:700; color:var(--cyan); }
+  .d-stat .l { font-size:11px; color:var(--text-dim); margin-top:2px; }
+  .timeline-strip {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:12px; padding:13px;
+  }
+  .tl-title { font-size:10px; color:var(--text-dim); margin-bottom:10px; text-transform:uppercase; letter-spacing:1px; }
+  .tl-row { display:flex; align-items:center; }
+  .tl-dot { display:flex; flex-direction:column; align-items:center; flex:1; }
+  .tl-circle {
+    width:10px; height:10px; border-radius:50%;
+    background:var(--cyan); box-shadow:0 0 8px var(--cyan); margin-bottom:5px;
+  }
+  .tl-circle.g { background:var(--gold); box-shadow:0 0 8px var(--gold); }
+  .tl-line { flex:1; height:1px; background:var(--border); }
+  .tl-dot span { font-size:9px; color:var(--text-dim); text-align:center; line-height:1.4; }
+
+  .detail-right {
+    flex:1; padding:22px; overflow-y:auto;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .detail-right::-webkit-scrollbar { width:4px; }
+  .detail-right::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .ai-card {
+    background:linear-gradient(135deg,rgba(0,212,255,.1),rgba(123,47,247,.1));
+    border:1px solid rgba(0,212,255,.3); border-radius:14px;
+    padding:14px; display:flex; gap:12px; align-items:flex-start;
+  }
+  .ai-card-text { font-size:13px; line-height:1.6; }
+  .ai-card-text strong { color:var(--cyan); }
+  .photos-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .photo-card {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:12px; overflow:hidden; cursor:pointer;
+    transition:transform .2s,border-color .2s; position:relative;
+  }
+  .photo-card:hover { transform:translateY(-3px); border-color:var(--cyan); }
+  .photo-card:first-child { grid-column:1/3; }
+  .ph-img { height:110px; display:flex; align-items:center; justify-content:center; font-size:44px; }
+  .photo-card:first-child .ph-img { height:145px; font-size:58px; }
+  .ph-meta { padding:7px 9px; }
+  .ph-meta .n { font-size:12px; font-weight:600; }
+  .ph-meta .l { font-size:10px; color:var(--text-dim); margin-top:2px; }
+  .ph-date {
+    position:absolute; top:7px; right:7px;
+    background:rgba(0,0,0,.6); backdrop-filter:blur(8px);
+    border-radius:5px; padding:2px 6px; font-size:9px; color:#fff;
+  }
+
+  /* ── ASSISTANT PAGE ── */
+  .assistant-left { flex:1; position:relative; overflow:hidden; }
+  #miniMapCanvas { width:100%; height:100%; display:block; }
+  .map-overlay-card {
+    position:absolute; top:20px; left:20px;
+    background:rgba(5,5,20,.75); backdrop-filter:blur(16px);
+    border:1px solid var(--border); border-radius:14px; padding:14px 18px;
+  }
+  .map-overlay-card .sub { font-size:11px; color:var(--text-dim); margin-bottom:6px; }
+  .map-overlay-card .city { font-size:18px; font-weight:700; color:var(--cyan); }
+  .map-overlay-card .region { font-size:12px; color:var(--text-dim); margin-top:3px; }
+
+  .assistant-right {
+    width:400px; display:flex; flex-direction:column;
+    border-left:1px solid var(--border); background:rgba(5,5,20,.55);
+  }
+  .asst-header {
+    padding:14px 18px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px;
+  }
+  .xiaoyu {
+    width:42px; height:42px; border-radius:50%;
+    background:linear-gradient(135deg,#ff9a9e,#fecfef);
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+    box-shadow:0 0 14px rgba(255,154,158,.4);
+    animation:glowPink 3s ease-in-out infinite;
+  }
+  @keyframes glowPink {
+    0%,100%{box-shadow:0 0 14px rgba(255,154,158,.4)}
+    50%    {box-shadow:0 0 24px rgba(255,154,158,.7)}
+  }
+  .asst-name   { font-size:14px; font-weight:600; }
+  .asst-status { font-size:11px; color:#4ade80; }
+  .status-dot  { display:inline-block; width:6px; height:6px; background:#4ade80; border-radius:50%; margin-right:4px; animation:blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .chat-area {
+    flex:1; overflow-y:auto; padding:14px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .chat-area::-webkit-scrollbar { width:3px; }
+  .chat-area::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .bubble {
+    max-width:92%; border-radius:14px; padding:10px 13px;
+    font-size:13px; line-height:1.6;
+  }
+  .bubble.ai {
+    background:rgba(255,154,158,.1); border:1px solid rgba(255,154,158,.2);
+    align-self:flex-start; border-top-left-radius:3px;
+  }
+  .bubble.user {
+    background:var(--cyan-dim); border:1px solid rgba(0,212,255,.3);
+    align-self:flex-end; border-bottom-right-radius:3px;
+  }
+  .agent-card {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:12px; padding:12px; margin-top:6px;
+  }
+  .agent-title {
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; color:var(--text-dim); margin-bottom:9px;
+  }
+  .agent-badge {
+    padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600;
+    background:var(--cyan-dim); color:var(--cyan); border:1px solid rgba(0,212,255,.3);
+  }
+  .weather-row {
+    display:flex; align-items:center; gap:12px;
+    background:rgba(0,212,255,.05); border-radius:10px; padding:10px;
+  }
+  .w-icon  { font-size:34px; }
+  .w-temp  { font-size:22px; font-weight:700; color:var(--cyan); }
+  .w-desc  { font-size:11px; color:var(--text-dim); }
+  .itin-list { display:flex; flex-direction:column; gap:6px; }
+  .itin-row {
+    display:flex; align-items:center; gap:10px;
+    padding:8px 10px; background:rgba(255,255,255,.03); border-radius:8px;
+  }
+  .itin-day {
+    width:34px; height:34px; border-radius:8px; flex-shrink:0;
+    background:var(--cyan-dim); border:1px solid rgba(0,212,255,.3);
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; color:var(--cyan); font-weight:700;
+  }
+  .itin-day.g { background:var(--gold-dim); border-color:rgba(255,215,0,.3); color:var(--gold); }
+  .itin-main { font-size:12px; font-weight:500; }
+  .itin-sub  { font-size:11px; color:var(--text-dim); }
+
+  .chat-input-row {
+    padding:12px 14px; border-top:1px solid var(--border);
+    display:flex; align-items:center; gap:8px;
+  }
+  .chat-input {
+    flex:1; background:var(--bg-card); border:1px solid var(--border);
+    border-radius:24px; padding:9px 15px;
+    font-size:13px; color:var(--text); outline:none; transition:border-color .2s;
+  }
+  .chat-input::placeholder { color:var(--text-dim); }
+  .chat-input:focus { border-color:var(--cyan); }
+  .voice-btn {
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(135deg,#ff9a9e,#fecfef);
+    border:none; display:flex; align-items:center; justify-content:center;
+    font-size:15px; cursor:pointer; transition:transform .2s,box-shadow .2s;
+  }
+  .voice-btn:hover { transform:scale(1.1); box-shadow:0 0 16px rgba(255,154,158,.5); }
+  .send-btn {
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background:var(--cyan); border:none;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; cursor:pointer; transition:transform .2s,opacity .2s;
+  }
+  .send-btn:hover { transform:scale(1.1); opacity:.85; }
+
+  /* ── SOCIAL PAGE ── */
+  .social-left {
+    width:280px; border-right:1px solid var(--border);
+    display:flex; flex-direction:column; overflow-y:auto;
+  }
+  .social-left::-webkit-scrollbar { width:3px; }
+  .social-left::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .sec-header {
+    padding:14px 14px 8px; font-size:11px; font-weight:600;
+    color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;
+  }
+  .story-card {
+    margin:5px 10px; background:var(--bg-card);
+    border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; cursor:pointer; transition:all .2s;
+  }
+  .story-card:hover { border-color:var(--cyan); transform:translateY(-2px); }
+  .story-cover { height:80px; display:flex; align-items:center; justify-content:center; font-size:46px; }
+  .story-body { padding:9px 11px; }
+  .story-user { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
+  .s-av { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; }
+  .s-name { font-size:12px; font-weight:600; }
+  .s-loc  { font-size:10px; color:var(--cyan); }
+  .story-text { font-size:11px; color:var(--text-dim); line-height:1.5; margin-bottom:7px; }
+  .story-acts { display:flex; gap:10px; }
+  .s-act { display:flex; align-items:center; gap:3px; font-size:11px; color:var(--text-dim); cursor:pointer; }
+  .s-act:hover { color:#ff6b6b; }
+
+  .social-mid { flex:1; position:relative; }
+  #socialMapCanvas { width:100%; height:100%; display:block; }
+  .online-card {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(5,5,20,.75); backdrop-filter:blur(10px);
+    border:1px solid var(--border); border-radius:12px;
+    padding:12px 20px; text-align:center; pointer-events:none;
+  }
+
+  .social-right {
+    width:250px; border-left:1px solid var(--border);
+    display:flex; flex-direction:column; background:rgba(5,5,20,.3);
+  }
+  .family-header { padding:14px 14px 10px; border-bottom:1px solid var(--border); }
+  .family-header h4 { font-size:13px; font-weight:600; margin-bottom:10px; }
+  .family-total {
+    background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(0,212,255,.05));
+    border:1px solid rgba(255,215,0,.2); border-radius:12px;
+    padding:12px; text-align:center;
+  }
+  .ft-num   { font-size:30px; font-weight:800; color:var(--gold); }
+  .ft-label { font-size:10px; color:var(--text-dim); margin-top:2px; }
+  .member-row {
+    display:flex; align-items:center; gap:9px;
+    padding:9px 12px; cursor:pointer; transition:background .2s;
+    border-radius:9px; margin:2px 6px;
+  }
+  .member-row:hover { background:var(--bg-card); }
+  .m-av { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:17px; }
+  .m-name { font-size:13px; font-weight:500; }
+  .m-sub  { font-size:10px; color:var(--text-dim); }
+  .m-dot  { width:7px; height:7px; border-radius:50%; margin-left:auto; }
+  .family-footer { padding:10px 12px; border-top:1px solid var(--border); margin-top:auto; }
+  .create-btn {
+    width:100%; padding:9px;
+    background:var(--cyan-dim); border:1px solid rgba(0,212,255,.3);
+    border-radius:10px; color:var(--cyan); font-size:12px; cursor:pointer; font-weight:600;
+    transition:background .2s;
+  }
+  .create-btn:hover { background:rgba(0,212,255,.25); }
+
+  /* ── Floating AI Bubble ── */
+  .ai-bubble {
+    position:fixed; bottom:22px; right:22px; z-index:100;
+    display:flex; flex-direction:column; align-items:flex-end; gap:8px;
+  }
+  .ai-chat-bubble {
+    background:rgba(5,5,20,.92); backdrop-filter:blur(20px);
+    border:1px solid rgba(255,154,158,.3); border-radius:14px 14px 3px 14px;
+    padding:9px 13px; font-size:12px; color:var(--text);
+    max-width:190px; line-height:1.5; transition:opacity .4s;
+  }
+  .ai-float-btn {
+    width:52px; height:52px; border-radius:50%;
+    background:linear-gradient(135deg,#ff9a9e,#fecfef);
+    border:none; display:flex; align-items:center; justify-content:center;
+    font-size:26px; cursor:pointer;
+    box-shadow:0 4px 20px rgba(255,154,158,.4);
+    transition:transform .3s,box-shadow .3s;
+  }
+  .ai-float-btn:hover { transform:scale(1.1); box-shadow:0 8px 30px rgba(255,154,158,.6); }
+</style>
+</head>
+<body>
+<canvas id="starCanvas"></canvas>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🗺️</div>
+      <span class="logo-text">Maptale</span>
+    </div>
+    <div class="user-profile">
+      <div class="avatar">🧑‍🦱</div>
+      <div class="username">旅行者小林</div>
+      <div class="user-level">✨ Lv.15 探索家</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-num">22</div><div class="stat-label">走过省份</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--gold)">48%</div><div class="stat-label">已探索</div></div>
+      <div class="stat-card"><div class="stat-num">115</div><div class="stat-label">旅行记忆</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#a78bfa">3</div><div class="stat-label">共建地图</div></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-title">导航</div>
+      <div class="nav-item active" onclick="switchPage('map',this)"><span class="nav-icon">🌍</span>我的地图</div>
+      <div class="nav-item" onclick="switchPage('social',this)"><span class="nav-icon">👥</span>发现社区</div>
+      <div class="nav-item" onclick="switchPage('assistant',this)"><span class="nav-icon">🤖</span>AI 旅行助手</div>
+      <div class="nav-title" style="margin-top:14px">功能</div>
+      <div class="nav-item" onclick="switchPage('detail',this)"><span class="nav-icon">📷</span>旅行相册</div>
+      <div class="nav-item"><span class="nav-icon">📅</span>旅行计划</div>
+      <div class="nav-item"><span class="nav-icon">⭐</span>愿望清单</div>
+      <div class="nav-item"><span class="nav-icon">⚙️</span>设置</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'map')">主地图</button>
+        <button class="tab-btn" onclick="switchTab(this,'social')">发现</button>
+        <button class="tab-btn" onclick="switchTab(this,'assistant')">AI助手</button>
+      </div>
+      <div class="topbar-right">
+        <div class="search-box">🔍 搜索地点、记忆...</div>
+        <div class="icon-btn">🔔</div>
+        <div class="icon-btn" onclick="alert('📸 上传旅行记忆！\n支持照片·视频·日记')">➕</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <!-- ① MAP -->
+      <div class="page-content active" id="page-map" style="position:relative;">
+        <canvas id="mapCanvas"></canvas>
+        <div class="polaroids" id="polaroids"></div>
+        <div class="province-tooltip" id="pTip">
+          <h3 id="tipName">云南省</h3>
+          <p id="tipInfo">已游览 3 座城市 · 28 张照片</p>
+          <button class="tooltip-btn" onclick="switchPage('detail',null)">查看回忆 →</button>
+        </div>
+        <div class="explore-progress">
+          <div class="progress-title">🗺️ 中国探索进度</div>
+          <div class="progress-wrap"><div class="progress-fill" style="width:48%"></div></div>
+          <div class="progress-pct">48%</div>
+        </div>
+        <div class="hover-tip" id="hoverTip"><strong id="hoverName">云南</strong> · 点击查看</div>
+      </div>
+
+      <!-- ② DETAIL -->
+      <div class="page-content" id="page-detail" style="flex-direction:row;">
+        <div class="detail-left">
+          <div class="detail-header">
+            <h2>🌸 云南 · Yunnan</h2>
+            <p>中国西南的秘境 | 2023 年 · 2024 年</p>
+          </div>
+          <div class="province-visual">🏔️</div>
+          <div class="detail-stats">
+            <div class="d-stat"><div class="n">142</div><div class="l">📷 照片</div></div>
+            <div class="d-stat"><div class="n" style="color:var(--gold)">28</div><div class="l">🌙 天数</div></div>
+            <div class="d-stat"><div class="n" style="color:#a78bfa">3</div><div class="l">🏙️ 城市</div></div>
+          </div>
+          <div class="timeline-strip">
+            <div class="tl-title">旅行时间线</div>
+            <div class="tl-row">
+              <div class="tl-dot"><div class="tl-circle"></div><span>2023.05<br>大理·丽江</span></div>
+              <div class="tl-line"></div>
+              <div class="tl-dot"><div class="tl-circle g"></div><span>2023.10<br>香格里拉</span></div>
+              <div class="tl-line"></div>
+              <div class="tl-dot"><div class="tl-circle"></div><span>2024.08<br>西双版纳</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-right">
+          <div class="ai-card">
+            <div style="font-size:26px;flex-shrink:0">✨</div>
+            <div class="ai-card-text">
+              你已探索云南 <strong>3 座城市</strong>，共记录 <strong>28 天</strong> 旅行，拍摄 <strong>142 张</strong>照片。AI 发现你偏爱自然风光和古镇建筑，下次可以去<strong>元阳梯田</strong>哦～
+            </div>
+          </div>
+          <div class="photos-grid">
+            <div class="photo-card" onclick="alert('🏘️ 丽江古城\n2023年5月14日\n穿越时光的青石板路...')">
+              <div class="ph-date">2023.05.14</div>
+              <div class="ph-img" style="background:linear-gradient(135deg,#667eea,#764ba2)">🏘️</div>
+              <div class="ph-meta"><div class="n">丽江古城</div><div class="l">📍 丽江市</div></div>
+            </div>
+            <div class="photo-card" onclick="alert('🌊 洱海日落\n2023年5月18日\n最美的落日余晖...')">
+              <div class="ph-date">2023.05.18</div>
+              <div class="ph-img" style="background:linear-gradient(135deg,#4fc3f7,#0288d1)">🌊</div>
+              <div class="ph-meta"><div class="n">洱海日落</div><div class="l">📍 大理市</div></div>
+            </div>
+            <div class="photo-card" onclick="alert('🏔️ 玉龙雪山\n2023年10月22日\n云端之上的冰雪世界...')">
+              <div class="ph-date">2023.10.22</div>
+              <div class="ph-img" style="background:linear-gradient(135deg,#b2ebf2,#4dd0e1)">🏔️</div>
+              <div class="ph-meta"><div class="n">玉龙雪山</div><div class="l">📍 丽江市</div></div>
+            </div>
+            <div class="photo-card" onclick="alert('🐘 西双版纳\n2024年8月20日\n与大象相遇的清晨...')">
+              <div class="ph-date">2024.08.20</div>
+              <div class="ph-img" style="background:linear-gradient(135deg,#a5d6a7,#388e3c)">🐘</div>
+              <div class="ph-meta"><div class="n">雨林奇遇</div><div class="l">📍 西双版纳</div></div>
+            </div>
+            <div class="photo-card" onclick="alert('🛕 独克宗\n2023年10月25日\n最接近天堂的地方...')">
+              <div class="ph-date">2023.10.25</div>
+              <div class="ph-img" style="background:linear-gradient(135deg,#ffcc80,#ff8f00)">🛕</div>
+              <div class="ph-meta"><div class="n">香格里拉古城</div><div class="l">📍 迪庆州</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ ASSISTANT -->
+      <div class="page-content" id="page-assistant" style="flex-direction:row;">
+        <div class="assistant-left">
+          <canvas id="miniMapCanvas"></canvas>
+          <div class="map-overlay-card">
+            <div class="sub">📍 正在规划</div>
+            <div class="city">桂林 · 漓江</div>
+            <div class="region">广西壮族自治区</div>
+          </div>
+        </div>
+        <div class="assistant-right">
+          <div class="asst-header">
+            <div class="xiaoyu">🧭</div>
+            <div>
+              <div class="asst-name">小旅 · AI 旅行助手</div>
+              <div class="asst-status"><span class="status-dot"></span>正在为你服务</div>
+            </div>
+          </div>
+          <div class="chat-area" id="chatArea">
+            <div class="bubble ai">你好！我是小旅 🌟<br>帮你规划<strong style="color:var(--cyan)">桂林三日游</strong>，我已经查好了天气和攻略，来看看吧～</div>
+            <div class="agent-card">
+              <div class="agent-title">🌤️ <span class="agent-badge">天气智能体</span></div>
+              <div class="weather-row">
+                <div class="w-icon">☀️</div>
+                <div>
+                  <div class="w-temp">25°C</div>
+                  <div class="w-desc">桂林 · 晴空万里</div>
+                  <div class="w-desc" style="margin-top:3px">未来7天：☀️☀️⛅🌦️☀️☀️☀️</div>
+                </div>
+              </div>
+            </div>
+            <div class="bubble ai">天气完美！给你安排了三天行程：</div>
+            <div class="agent-card">
+              <div class="agent-title">🗺️ <span class="agent-badge">路线规划智能体</span></div>
+              <div class="itin-list">
+                <div class="itin-row"><div class="itin-day">D1</div><div><div class="itin-main">漓江竹筏 + 阳朔西街</div><div class="itin-sub">🚣 漂流3小时 · 🌆 夜市美食</div></div></div>
+                <div class="itin-row"><div class="itin-day g">D2</div><div><div class="itin-main">象鼻山 + 七星公园</div><div class="itin-sub">📷 拍照圣地 · ⏱ 约5小时</div></div></div>
+                <div class="itin-row"><div class="itin-day">D3</div><div><div class="itin-main">龙脊梯田 + 壮族体验</div><div class="itin-sub">🌾 自然奇观 · 🏘️ 民俗文化</div></div></div>
+              </div>
+            </div>
+            <div class="bubble user">帮我查一下从北京飞桂林的航班 ✈️</div>
+            <div class="bubble ai" id="typingBubble" style="display:none">正在查询航班信息...</div>
+          </div>
+          <div class="chat-input-row">
+            <button class="voice-btn" onclick="doVoice(this)">🎙️</button>
+            <input class="chat-input" id="chatInput" placeholder="问小旅：美食·酒店·路线·门票..." onkeydown="if(event.key==='Enter')sendMsg()">
+            <button class="send-btn" onclick="sendMsg()">➤</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ SOCIAL -->
+      <div class="page-content" id="page-social" style="flex-direction:row;">
+        <div class="social-left">
+          <div class="sec-header">旅行故事</div>
+          <div class="story-card">
+            <div class="story-cover" style="background:linear-gradient(135deg,#1a1a2e,#16213e)">🏯</div>
+            <div class="story-body">
+              <div class="story-user"><div class="s-av" style="background:#ff6b6b">🧑</div><div><div class="s-name">@城市漫游者</div><div class="s-loc">📍 北京·长城</div></div></div>
+              <div class="story-text">站在长城上看日出，那一刻觉得一切都值得了...🌅</div>
+              <div class="story-acts"><div class="s-act" onclick="like(this)">❤️ 2.1k</div><div class="s-act">💬 154</div><div class="s-act">🔖</div></div>
+            </div>
+          </div>
+          <div class="story-card">
+            <div class="story-cover" style="background:linear-gradient(135deg,#134e5e,#71b280)">🏞️</div>
+            <div class="story-body">
+              <div class="story-user"><div class="s-av" style="background:#4ecdc4">🌿</div><div><div class="s-name">@山野徒步客</div><div class="s-loc">📍 湖南·张家界</div></div></div>
+              <div class="story-text">阿凡达的取景地，云雾中的山峰如梦似幻 🌫️</div>
+              <div class="story-acts"><div class="s-act" onclick="like(this)">❤️ 1.8k</div><div class="s-act">💬 120</div><div class="s-act">🔖</div></div>
+            </div>
+          </div>
+          <div class="story-card">
+            <div class="story-cover" style="background:linear-gradient(135deg,#1a6b4a,#2ecc71)">🌿</div>
+            <div class="story-body">
+              <div class="story-user"><div class="s-av" style="background:#f39c12">👩</div><div><div class="s-name">@江南水乡记</div><div class="s-loc">📍 浙江·西湖</div></div></div>
+              <div class="story-text">断桥残雪，曲院风荷，西湖的美四季不同 🍃</div>
+              <div class="story-acts"><div class="s-act" onclick="like(this)">❤️ 1.5k</div><div class="s-act">💬 98</div><div class="s-act">🔖</div></div>
+            </div>
+          </div>
+          <div class="story-card">
+            <div class="story-cover" style="background:linear-gradient(135deg,#4a1942,#c0392b)">🌅</div>
+            <div class="story-body">
+              <div class="story-user"><div class="s-av" style="background:#9b59b6">🧑‍🎨</div><div><div class="s-name">@西部旅行家</div><div class="s-loc">📍 西藏·布达拉宫</div></div></div>
+              <div class="story-text">海拔3700米，最接近天空的宫殿 ✨</div>
+              <div class="story-acts"><div class="s-act" onclick="like(this)">❤️ 3.2k</div><div class="s-act">💬 286</div><div class="s-act">🔖</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="social-mid">
+          <canvas id="socialMapCanvas"></canvas>
+          <div class="online-card">
+            <div style="font-size:13px;color:var(--text-dim)">🌐 全球旅行者正在探索中国</div>
+            <div style="font-size:22px;font-weight:700;color:var(--cyan);margin-top:4px">12,847</div>
+            <div style="font-size:11px;color:var(--text-dim)">人在线</div>
+          </div>
+        </div>
+        <div class="social-right">
+          <div class="family-header">
+            <h4>👨‍👩‍👧‍👦 家庭地图</h4>
+            <div class="family-total">
+              <div class="ft-num">31</div>
+              <div class="ft-label">一家人共走过的省份</div>
+            </div>
+          </div>
+          <div style="padding:6px 0;flex:1">
+            <div class="member-row"><div class="m-av" style="background:linear-gradient(135deg,#ff9a9e,#fecfef)">👩</div><div><div class="m-name">妈妈</div><div class="m-sub">18 个省份</div></div><div class="m-dot" style="background:#ff9a9e"></div></div>
+            <div class="member-row"><div class="m-av" style="background:linear-gradient(135deg,#a29bfe,#6c5ce7)">👨</div><div><div class="m-name">爸爸</div><div class="m-sub">24 个省份</div></div><div class="m-dot" style="background:#a29bfe"></div></div>
+            <div class="member-row"><div class="m-av" style="background:linear-gradient(135deg,#55efc4,#00b894)">🧒</div><div><div class="m-name">小林（我）</div><div class="m-sub">22 个省份</div></div><div class="m-dot" style="background:#55efc4"></div></div>
+            <div class="member-row" onclick="alert('📨 发送邀请链接\n邀请家人共同拼凑家族旅行地图！')"><div class="m-av" style="background:var(--bg-card);border:1px dashed var(--border)">➕</div><div><div class="m-name" style="color:var(--text-dim)">邀请家人</div><div class="m-sub">共同拼图</div></div></div>
+          </div>
+          <div class="family-footer">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px">🎯 好友共建</div>
+            <button class="create-btn" onclick="alert('🔗 创建共建地图\n邀请闺蜜/兄弟一起拼旅行地图！')">➕ 创建共建地图</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page -->
+  </main>
+</div>
+
+<!-- Floating AI bubble -->
+<div class="ai-bubble">
+  <div class="ai-chat-bubble" id="aiChat">欢迎回来，小林！🌟<br>今天想去哪里探索？</div>
+  <button class="ai-float-btn" onclick="switchPage('assistant',null)" title="打开小旅助手">🧭</button>
+</div>
+
+<script>
+/* ── Stars ── */
+(function(){
+  const c=document.getElementById('starCanvas'), ctx=c.getContext('2d');
+  let stars=[], W, H;
+  function resize(){ W=c.width=innerWidth; H=c.height=innerHeight; }
+  function init(){
+    stars=[];
+    for(let i=0;i<180;i++) stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.4+.3,ph:Math.random()*Math.PI*2,sp:Math.random()*.003+.001});
+  }
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H); t+=.01;
+    stars.forEach(s=>{
+      const a=.25+.55*(.5+.5*Math.sin(t*s.sp*100+s.ph));
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,255,255,${a})`; ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize(); init(); draw();
+  window.addEventListener('resize',()=>{resize();init();});
+})();
+
+/* ── Province Data ── */
+const PROVS=[
+  {n:'云南',e:'🌸',cx:.30,cy:.65,rx:.08,ry:.06,v:1,p:142,d:28,c:3},
+  {n:'四川',e:'🐼',cx:.33,cy:.55,rx:.07,ry:.06,v:1,p:88,d:12,c:2},
+  {n:'北京',e:'🏯',cx:.55,cy:.28,rx:.03,ry:.03,v:1,p:67,d:5,c:1},
+  {n:'西藏',e:'🏔️',cx:.18,cy:.52,rx:.09,ry:.08,v:1,p:55,d:8,c:1},
+  {n:'广东',e:'🌆',cx:.50,cy:.73,rx:.06,ry:.04,v:1,p:39,d:6,c:3},
+  {n:'浙江',e:'🌿',cx:.60,cy:.57,rx:.04,ry:.03,v:1,p:44,d:5,c:2},
+  {n:'湖南',e:'🏞️',cx:.49,cy:.61,rx:.05,ry:.05,v:1,p:31,d:4,c:2},
+  {n:'陕西',e:'⚔️',cx:.45,cy:.46,rx:.05,ry:.05,v:1,p:28,d:4,c:1},
+  {n:'上海',e:'🌃',cx:.62,cy:.52,rx:.025,ry:.025,v:1,p:55,d:3,c:1},
+  {n:'广西',e:'🌴',cx:.43,cy:.70,rx:.06,ry:.05,v:1,p:76,d:8,c:3},
+  {n:'重庆',e:'🌶️',cx:.40,cy:.60,rx:.03,ry:.03,v:1,p:33,d:4,c:1},
+  {n:'江苏',e:'🎭',cx:.58,cy:.50,rx:.04,ry:.04,v:1,p:36,d:5,c:3},
+  {n:'山东',e:'🥟',cx:.57,cy:.42,rx:.05,ry:.04,v:1,p:18,d:3,c:2},
+  {n:'安徽',e:'🌺',cx:.54,cy:.52,rx:.04,ry:.04,v:1,p:14,d:2,c:1},
+  {n:'辽宁',e:'🏭',cx:.60,cy:.30,rx:.05,ry:.04,v:1,p:20,d:3,c:1},
+  {n:'海南',e:'🏖️',cx:.48,cy:.80,rx:.025,ry:.025,v:1,p:22,d:5,c:1},
+  {n:'新疆',e:'🐪',cx:.14,cy:.33,rx:.12,ry:.10,v:0},
+  {n:'内蒙古',e:'🐎',cx:.42,cy:.25,rx:.14,ry:.08,v:0},
+  {n:'黑龙江',e:'❄️',cx:.63,cy:.15,rx:.09,ry:.07,v:0},
+  {n:'吉林',e:'🎋',cx:.64,cy:.23,rx:.06,ry:.04,v:0},
+  {n:'河北',e:'🌾',cx:.52,cy:.33,rx:.05,ry:.04,v:0},
+  {n:'山西',e:'🏛️',cx:.47,cy:.38,rx:.04,ry:.04,v:0},
+  {n:'河南',e:'🏺',cx:.50,cy:.47,rx:.05,ry:.04,v:0},
+  {n:'湖北',e:'🌉',cx:.49,cy:.55,rx:.05,ry:.04,v:0},
+  {n:'甘肃',e:'🐫',cx:.30,cy:.40,rx:.08,ry:.05,v:0},
+  {n:'青海',e:'🦙',cx:.24,cy:.45,rx:.08,ry:.06,v:0},
+  {n:'贵州',e:'🌊',cx:.41,cy:.63,rx:.05,ry:.04,v:0},
+  {n:'福建',e:'🍵',cx:.58,cy:.64,rx:.04,ry:.04,v:0},
+  {n:'江西',e:'🏯',cx:.55,cy:.60,rx:.04,ry:.04,v:0},
+  {n:'宁夏',e:'🌙',cx:.39,cy:.40,rx:.03,ry:.03,v:0},
+  {n:'天津',e:'🚀',cx:.55,cy:.31,rx:.025,ry:.025,v:0},
+];
+
+/* ── Main Map ── */
+(function(){
+  const canvas=document.getElementById('mapCanvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,hov=null,t=0;
+  function resize(){ W=canvas.width=canvas.offsetWidth; H=canvas.height=canvas.offsetHeight; }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H); t+=.018;
+    // nebula glow
+    const bg=ctx.createRadialGradient(W*.44,H*.5,0,W*.44,H*.5,Math.max(W,H)*.55);
+    bg.addColorStop(0,'rgba(0,60,100,.12)'); bg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+    PROVS.forEach((p,i)=>{
+      const cx=p.cx*W, cy=p.cy*H, rx=p.rx*W, ry=p.ry*H;
+      if(p.v){
+        const pulse=1+.08*Math.sin(t+i*.6);
+        // outer glow
+        const gg=ctx.createRadialGradient(cx,cy,0,cx,cy,rx*2.8);
+        const isHov=(p===hov);
+        gg.addColorStop(0,isHov?'rgba(255,215,0,.3)':'rgba(0,212,255,.18)');
+        gg.addColorStop(.6,isHov?'rgba(255,215,0,.05)':'rgba(0,212,255,.04)');
+        gg.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=gg; ctx.beginPath();
+        ctx.ellipse(cx,cy,rx*pulse*2.8,ry*pulse*2.8,0,0,Math.PI*2); ctx.fill();
+        // body
+        ctx.beginPath(); ctx.ellipse(cx,cy,rx*pulse,ry*pulse,0,0,Math.PI*2);
+        ctx.fillStyle=isHov?'rgba(255,215,0,.35)':'rgba(0,212,255,.18)';
+        ctx.strokeStyle=isHov?'rgba(255,215,0,.95)':'rgba(0,212,255,.6)';
+        ctx.lineWidth=1.5; ctx.fill(); ctx.stroke();
+        // label
+        ctx.fillStyle=isHov?'#ffd700':'rgba(255,255,255,.9)';
+        ctx.font=`bold ${Math.max(9,rx*.17)}px sans-serif`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(p.n,cx,cy);
+        // pulse dot
+        const dr=3+2*Math.sin(t*2.5+i);
+        ctx.beginPath(); ctx.arc(cx,cy-ry-3,dr,0,Math.PI*2);
+        ctx.fillStyle=isHov?'#ffd700':'#00d4ff';
+        ctx.shadowColor=isHov?'#ffd700':'#00d4ff'; ctx.shadowBlur=10;
+        ctx.fill(); ctx.shadowBlur=0;
+      } else {
+        ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+        ctx.fillStyle='rgba(80,80,120,.08)';
+        ctx.strokeStyle='rgba(255,255,255,.08)';
+        ctx.lineWidth=.8; ctx.fill(); ctx.stroke();
+        ctx.fillStyle='rgba(255,255,255,.22)';
+        ctx.font=`${Math.max(8,rx*.14)}px sans-serif`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(p.n,cx,cy);
+      }
+    });
+    requestAnimationFrame(draw);
+  }
+
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+    let found=null;
+    PROVS.forEach(p=>{
+      const dx=(mx-p.cx*W)/(p.rx*W), dy=(my-p.cy*H)/(p.ry*H);
+      if(dx*dx+dy*dy<1.3) found=p;
+    });
+    hov=found;
+    const tip=document.getElementById('hoverTip');
+    if(found){
+      canvas.style.cursor='pointer';
+      document.getElementById('hoverName').textContent=found.n;
+      tip.classList.add('on');
+      tip.style.left=mx+'px'; tip.style.top=my+'px';
+    } else {
+      canvas.style.cursor='default'; tip.classList.remove('on');
+    }
+  });
+  canvas.addEventListener('click',e=>{
+    if(!hov) return;
+    const t2=document.getElementById('pTip');
+    document.getElementById('tipName').textContent=hov.e+' '+hov.n+'省';
+    if(hov.v){
+      document.getElementById('tipInfo').textContent=`已游览 ${hov.c||1} 座城市 · ${hov.p||0} 张照片 · ${hov.d||0} 天`;
+      t2.querySelector('.tooltip-btn').style.display='block';
+    } else {
+      document.getElementById('tipInfo').textContent='尚未探索，加入愿望清单？';
+      t2.querySelector('.tooltip-btn').style.display='none';
+    }
+    t2.classList.add('show');
+    setTimeout(()=>t2.classList.remove('show'),4000);
+  });
+  canvas.addEventListener('mouseleave',()=>{ hov=null; canvas.style.cursor='default'; document.getElementById('hoverTip').classList.remove('on'); });
+
+  resize(); draw();
+  window.addEventListener('resize',resize);
+})();
+
+/* ── Polaroids ── */
+(function(){
+  const grads=['linear-gradient(135deg,#667eea,#764ba2)','linear-gradient(135deg,#4fc3f7,#0288d1)','linear-gradient(135deg,#a5d6a7,#388e3c)','linear-gradient(135deg,#ffcc80,#ff8f00)','linear-gradient(135deg,#ef9a9a,#c62828)','linear-gradient(135deg,#80cbc4,#004d40)'];
+  const items=[
+    {e:'🌸',l:'大理古城',t:'11%',le:'7%',r:'-8deg'},
+    {e:'🏔️',l:'玉龙雪山',t:'9%',ri:'11%',r:'6deg'},
+    {e:'🐼',l:'成都熊猫',t:'54%',le:'4%',r:'-5deg'},
+    {e:'🏯',l:'北京长城',b:'14%',le:'17%',r:'7deg'},
+    {e:'🌅',l:'张家界日出',b:'18%',ri:'7%',r:'-9deg'},
+    {e:'🌊',l:'漓江竹筏',t:'33%',ri:'4%',r:'4deg'},
+  ];
+  const cont=document.getElementById('polaroids');
+  items.forEach((item,i)=>{
+    const el=document.createElement('div');
+    el.className='polaroid';
+    el.style.cssText=`top:${item.t||'auto'};left:${item.le||'auto'};right:${item.ri||'auto'};bottom:${item.b||'auto'};--r:${item.r};transform:rotate(${item.r});animation-delay:${i*.7}s`;
+    el.innerHTML=`<div class="p-img" style="background:${grads[i]}">${item.e}</div><div class="p-label">${item.l}</div>`;
+    el.onclick=()=>switchPage('detail',null);
+    cont.appendChild(el);
+  });
+})();
+
+/* ── Mini Map (assistant) ── */
+function initMiniMap(){
+  const canvas=document.getElementById('miniMapCanvas');
+  if(!canvas||canvas.dataset.i) return; canvas.dataset.i='1';
+  const ctx=canvas.getContext('2d'); let W,H,t=0;
+  function resize(){ W=canvas.width=canvas.offsetWidth; H=canvas.height=canvas.offsetHeight; }
+  function draw(){
+    ctx.clearRect(0,0,W,H); t+=.015;
+    ctx.fillStyle='rgba(5,5,20,.25)'; ctx.fillRect(0,0,W,H);
+    // highlight Guangxi
+    const gcx=.43*W, gcy=.70*H;
+    const gg=ctx.createRadialGradient(gcx,gcy,0,gcx,gcy,.1*W);
+    gg.addColorStop(0,'rgba(0,212,255,.35)'); gg.addColorStop(1,'rgba(0,212,255,0)');
+    ctx.fillStyle=gg; ctx.beginPath(); ctx.ellipse(gcx,gcy,.1*W,.08*H,0,0,Math.PI*2); ctx.fill();
+    PROVS.forEach((p,i)=>{
+      const cx=p.cx*W,cy=p.cy*H,rx=p.rx*W*.85,ry=p.ry*H*.85;
+      ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+      if(p.n==='广西'){
+        ctx.fillStyle='rgba(0,212,255,.35)'; ctx.strokeStyle='rgba(0,212,255,.9)'; ctx.lineWidth=2;
+      } else if(p.v){
+        ctx.fillStyle='rgba(255,215,0,.12)'; ctx.strokeStyle='rgba(255,215,0,.35)'; ctx.lineWidth=1;
+      } else {
+        ctx.fillStyle='rgba(80,80,120,.05)'; ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=.5;
+      }
+      ctx.fill(); ctx.stroke();
+    });
+    // Guilin pin
+    const px=.46*W, py=.68*H, pr=4+2*Math.sin(t*3);
+    ctx.beginPath(); ctx.arc(px,py,pr,0,Math.PI*2);
+    ctx.fillStyle='#00d4ff'; ctx.shadowColor='#00d4ff'; ctx.shadowBlur=12; ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle='white'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillText('桂林',px,py-10);
+    requestAnimationFrame(draw);
+  }
+  resize(); draw();
+  window.addEventListener('resize',resize);
+}
+
+/* ── Social Map ── */
+function initSocialMap(){
+  const canvas=document.getElementById('socialMapCanvas');
+  if(!canvas||canvas.dataset.i) return; canvas.dataset.i='1';
+  const ctx=canvas.getContext('2d'); let W,H,t=0;
+  const conns=[
+    {x1:.55,y1:.28,x2:.43,y2:.70},{x1:.60,y1:.57,x2:.30,y2:.65},
+    {x1:.50,y1:.73,x2:.55,y2:.28},{x1:.40,y1:.60,x2:.50,y2:.61},
+  ];
+  function resize(){ W=canvas.width=canvas.offsetWidth; H=canvas.height=canvas.offsetHeight; }
+  function draw(){
+    ctx.clearRect(0,0,W,H); t+=.01;
+    ctx.fillStyle='rgba(5,5,20,.15)'; ctx.fillRect(0,0,W,H);
+    conns.forEach((c,i)=>{
+      const cpx=(c.x1+c.x2)/2*W, cpy=Math.min(c.y1,c.y2)*H-.12*H;
+      ctx.beginPath(); ctx.moveTo(c.x1*W,c.y1*H);
+      ctx.quadraticCurveTo(cpx,cpy,c.x2*W,c.y2*H);
+      ctx.strokeStyle=`rgba(255,215,0,${.25+.2*Math.sin(t+i)})`; ctx.lineWidth=1.2; ctx.stroke();
+      const tp=(t*.25+i*.25)%1;
+      const bx=Math.pow(1-tp,2)*c.x1*W+2*(1-tp)*tp*cpx+tp*tp*c.x2*W;
+      const by=Math.pow(1-tp,2)*c.y1*H+2*(1-tp)*tp*cpy+tp*tp*c.y2*H;
+      ctx.beginPath(); ctx.arc(bx,by,2.5,0,Math.PI*2);
+      ctx.fillStyle='#ffd700'; ctx.shadowColor='#ffd700'; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
+    });
+    PROVS.forEach(p=>{
+      const cx=p.cx*W,cy=p.cy*H,rx=p.rx*W*.9,ry=p.ry*H*.9;
+      ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+      if(p.v){ ctx.fillStyle='rgba(255,215,0,.1)'; ctx.strokeStyle='rgba(255,215,0,.35)'; ctx.lineWidth=1; }
+      else   { ctx.fillStyle='rgba(80,80,120,.05)'; ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=.5; }
+      ctx.fill(); ctx.stroke();
+    });
+    const pins=[{x:.55,y:.28,e:'🧑'},{x:.49,y:.61,e:'👩'},{x:.60,y:.57,e:'🌿'},{x:.48,y:.52,e:'🎨'}];
+    pins.forEach(p=>{ ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(p.e,p.x*W,p.y*H); });
+    requestAnimationFrame(draw);
+  }
+  resize(); draw();
+  window.addEventListener('resize',resize);
+}
+
+/* ── Page Switching ── */
+function showPage(id){
+  document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
+  const el=document.getElementById('page-'+id);
+  if(el) el.classList.add('active');
+  if(id==='assistant') setTimeout(initMiniMap,80);
+  if(id==='social')    setTimeout(initSocialMap,80);
+}
+function switchPage(id,navEl){
+  showPage(id);
+  if(navEl){ document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); navEl.classList.add('active'); }
+  const tabMap={map:'主地图',social:'发现',assistant:'AI助手',detail:'主地图'};
+  document.querySelectorAll('.tab-btn').forEach(t=>t.classList.toggle('active',t.textContent===(tabMap[id]||'')));
+}
+function switchTab(el,id){
+  document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active')); el.classList.add('active');
+  showPage(id);
+}
+
+/* ── Chat ── */
+const RESPS={
+  default:'✈️ 查到北京→桂林航班：\n• 南航 CZ3168  07:30  ¥850起\n• 国航 CA1833  10:20  ¥920起\n• 东航 MU5118  14:45  ¥780起\n\n建议国庆前一周出发，价格最优！',
+  美食:'🍜 桂林必吃：\n① 桂林米粉（正宗老字号）★4.9\n② 油茶（打油茶体验）\n③ 啤酒鱼（西街人气王）\n④ 荔浦芋头扣肉\n人均约60-120元',
+  酒店:'🏨 漓江边推荐：\n• 漓江大瀑布饭店  ¥680/晚 ★★★★★\n• 希尔顿桂林  ¥520/晚 ★★★★★\n• 阳朔悦榕庄  ¥1200/晚 ★★★★★\n建议提前2周预订！',
+  门票:'🎫 景区门票：\n• 漓江竹筏  ¥198/人\n• 象鼻山  ¥75/人\n• 龙脊梯田  ¥80/人\n• 西街  免费\n总预算约¥353，帮你一键预订？',
+};
+function sendMsg(){
+  const inp=document.getElementById('chatInput');
+  const v=inp.value.trim(); if(!v) return;
+  const area=document.getElementById('chatArea');
+  const ub=document.createElement('div'); ub.className='bubble user'; ub.textContent=v;
+  area.appendChild(ub); inp.value='';
+  const tb=document.getElementById('typingBubble'); tb.style.display='block'; tb.textContent='小旅正在思考... 🤔';
+  area.scrollTop=area.scrollHeight;
+  let resp=RESPS.default;
+  if(v.includes('美食')||v.includes('吃')) resp=RESPS['美食'];
+  else if(v.includes('酒店')||v.includes('住')) resp=RESPS['酒店'];
+  else if(v.includes('门票')||v.includes('景点')) resp=RESPS['门票'];
+  setTimeout(()=>{
+    tb.style.display='none';
+    const rb=document.createElement('div'); rb.className='bubble ai'; rb.style.whiteSpace='pre-line'; rb.textContent=resp;
+    area.appendChild(rb); area.scrollTop=area.scrollHeight;
+  },1400);
+}
+function doVoice(btn){
+  btn.style.boxShadow='0 0 20px rgba(255,154,158,.8)';
+  setTimeout(()=>{ document.getElementById('chatInput').value='帮我推荐桂林的特色美食 🍜'; btn.style.boxShadow=''; },1600);
+}
+function like(el){
+  el.style.color='#ff6b6b'; el.style.transform='scale(1.3)';
+  setTimeout(()=>el.style.transform='',200);
+}
+
+/* ── Rotating AI messages ── */
+const MSGS=['欢迎回来！今天去哪探索？🌟','云南的记忆已有142张照片啦 📸','桂林10月天气极佳，要规划吗？','还有10个省份没走过，加油！🗺️'];
+let mi=0;
+setInterval(()=>{
+  mi=(mi+1)%MSGS.length;
+  const el=document.getElementById('aiChat');
+  el.style.opacity='0';
+  setTimeout(()=>{ el.innerHTML=MSGS[mi]; el.style.opacity='1'; el.style.transition='opacity .4s'; },300);
+},5000);
+</script>
+</body>
+</html>
