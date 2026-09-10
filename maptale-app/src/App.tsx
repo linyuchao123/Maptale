@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -6,6 +7,7 @@ import { ChinaMapView } from '@/components/map/ChinaMapView'
 import { RegionView } from '@/components/map/RegionView'
 import { AttractionView } from '@/components/map/AttractionView'
 import { XiaoluAssistant } from '@/components/assistant/XiaoluAssistant'
+import { UploadMemoryModal } from '@/components/ui/UploadMemoryModal'
 import { useMapStore } from '@/store/mapStore'
 
 const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
@@ -17,6 +19,7 @@ const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
 
 export default function App() {
   const { layer, breadcrumb } = useMapStore()
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
   const pageInfo = PAGE_TITLES[layer]
 
   return (
@@ -84,20 +87,34 @@ export default function App() {
 
           {/* 右侧操作栏 */}
           <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+            {/* 环境音治愈白噪音开关 */}
+            <motion.button
+              onClick={() => {
+                alert('🎵 正在播放：【自然微风 · 洱海浪花】白噪音')
+              }}
+              className="glass-card-sm flex items-center gap-1.5 px-3 py-2 text-purple-600 hover:bg-purple-50/60 transition-colors text-xs font-medium"
+              whileHover={{ scale: 1.02 }}
+              title="沉浸式旅行环境音"
+            >
+              <span>🌿</span>
+              <span>旅途白噪音</span>
+            </motion.button>
+
             {/* 搜索 */}
             <motion.button
-              className="glass-card-sm flex items-center gap-2 px-4 py-2 text-gray-400
-                         hover:text-purple-500 transition-colors duration-200 text-sm"
+              className="glass-card-sm flex items-center gap-2 px-3.5 py-2 text-gray-400
+                         hover:text-purple-500 transition-colors duration-200 text-xs"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="text-base">🔍</span>
+              <span className="text-sm">🔍</span>
               <span>搜索记忆</span>
             </motion.button>
 
             {/* 上传按钮 */}
             <motion.button
-              className="pill-btn pill-btn-primary"
+              onClick={() => setIsUploadOpen(true)}
+              className="pill-btn pill-btn-primary text-xs"
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
             >
@@ -180,6 +197,12 @@ export default function App() {
 
       {/* ── 浮动 AI 助手 ── */}
       <XiaoluAssistant />
+
+      {/* ── 点亮拼图记忆上传弹窗 ── */}
+      <UploadMemoryModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+      />
     </div>
   )
 }

@@ -341,20 +341,69 @@ export function GlobeView() {
         </div>
       )}
 
-      {/* ── 底部 hint 文字（animate pulse） ── */}
+      {/* ── 视角快捷切换与自动旋转控制器 ── */}
       {!isLoading && (
         <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 glass-card px-5 py-2.5 text-center"
+          className="absolute bottom-8 left-8 flex items-center gap-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          {/* 视角预设胶囊 */}
+          <div className="glass-card p-1.5 flex items-center gap-1">
+            {[
+              { label: '🇨🇳 聚焦中国', lat: 32, lng: 105, altitude: 2.0 },
+              { label: '🌸 亚洲足迹', lat: 25, lng: 115, altitude: 2.6 },
+              { label: '🗼 欧洲漫游', lat: 48, lng: 10,  altitude: 2.2 },
+              { label: '🌐 全球宏观', lat: 20, lng: 0,   altitude: 3.2 },
+            ].map(preset => (
+              <button
+                key={preset.label}
+                onClick={() => {
+                  if (globeRef.current) {
+                    globeRef.current.pointOfView(
+                      { lat: preset.lat, lng: preset.lng, altitude: preset.altitude },
+                      1400
+                    )
+                  }
+                }}
+                className="px-3 py-1 rounded-full text-xs font-medium text-gray-600 hover:text-purple-600 hover:bg-white/80 transition-all cursor-pointer"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 自动旋转切换 */}
+          <button
+            onClick={() => {
+              if (globeRef.current) {
+                const current = globeRef.current.controls().autoRotate
+                globeRef.current.controls().autoRotate = !current
+              }
+            }}
+            className="glass-card w-8 h-8 rounded-full flex items-center justify-center text-xs text-purple-600 hover:bg-purple-50 transition-colors shadow-sm"
+            title="切换地球自动旋转"
+          >
+            🔄
+          </button>
+        </motion.div>
+      )}
+
+      {/* ── 底部 hint 文字 ── */}
+      {!isLoading && (
+        <motion.div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 glass-card px-5 py-2 text-center shadow-sm"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
         >
           <motion.p
-            className="text-sm text-gray-500"
-            animate={{ opacity: [0.5, 1, 0.5] }}
+            className="text-xs text-gray-500 font-medium"
+            animate={{ opacity: [0.6, 1, 0.6] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           >
-            🌍 点击地球上的国家，进入你的旅行记忆
+            🌍 点击地球上的发光航迹与坐标点，开启你的专属时光机
           </motion.p>
         </motion.div>
       )}
