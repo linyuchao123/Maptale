@@ -16,6 +16,8 @@ const BOT_MSGS = [
   '还有 12 个省份没走过，加油！🗺️',
 ]
 
+import { aiApi } from '@/api/client'
+
 interface Message {
   role: 'user' | 'ai'
   text: string
@@ -26,17 +28,38 @@ export function XiaoluAssistant() {
   const [input, setInput] = useState('')
   const [msgIdx, setMsgIdx] = useState(0)
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'ai', text: '你好！我是小旅 🧭\n有任何旅行问题都可以问我～' },
+    { role: 'ai', text: '你好！我是小旅 🧭\n有任何旅行问题或行程规划都可以问我～' },
   ])
   const [typing, setTyping] = useState(false)
 
-  const send = () => {
+  const send = async () => {
     const v = input.trim()
     if (!v) return
-    setMessages(prev => [...prev, { role: 'user', text: v }])
+    const newMessages: Message[] = [...messages, { role: 'user', text: v }]
+    setMessages(newMessages)
     setInput('')
     setTyping(true)
 
+    try {
+      // 组装历史消息上下文
+      const history = messages.slice(-4).map(m => ({
+        role: m.role === 'ai' ? 'assistant' : 'user',
+        content: m.text
+      }))
+
+      const res: any = await aiApi.chat(v, history)
+      const reply = res?.data?.reply
+
+      if (reply) {
+        setTyping(false)
+        setMessages(prev => [...prev, { role: 'ai', text: reply }])
+        return
+      }
+    } catch (err) {
+      console.warn('[XiaoluAssistant] 后端 AI 接口未就绪或超时，采用本地启发式回复')
+    }
+
+    // 本地后备回复策略
     let resp = CHAT_RESPONSES.default
     if (v.includes('美食') || v.includes('吃')) resp = CHAT_RESPONSES.美食
     else if (v.includes('酒店') || v.includes('住')) resp = CHAT_RESPONSES.酒店
@@ -46,7 +69,7 @@ export function XiaoluAssistant() {
     setTimeout(() => {
       setTyping(false)
       setMessages(prev => [...prev, { role: 'ai', text: resp }])
-    }, 1200)
+    }, 800)
   }
 
   return (

@@ -1,0 +1,92 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String?
+  name          String
+  avatar        String?
+  level         Int            @default(1)
+  levelName     String         @default("旅行新手")
+  bio           String?
+  memories      Memory[]
+  regionVisits  RegionVisit[]
+  agentSessions AgentSession[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Memory {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 图片资产
+  imageUrl     String    // 阿里云 OSS 或存储的完整 URL
+  thumbnailUrl String?
+  
+  // 地理与位置定位
+  lat          Float?
+  lng          Float?
+  locationName String?   // 例如："云南 · 丽江 · 大研古镇"
+  regionId     String?   // "yunnan"
+  countryCode  String    @default("CN")
+  attractionId String?   // "lijiang"
+  
+  // 多智能体 AI 生成信息
+  aiTitle      String?   // AI 生成的诗意标题
+  aiStory      String?   // StoryAgent 生成的旅行手帐随笔
+  aiMood       String?   // "🌸 温暖惬意"
+  aiTags       String[]  // ["古城老街", "日落", "慢生活"]
+  aiAnalysis   Json?     // VisionAgent 视觉解析原始详情（场景、色彩、元素）
+  
+  // 相机与拍摄元数据
+  cameraModel  String?   // "Sony A7M4 · 35mm f/1.4"
+  takenAt      DateTime? // 照片拍摄时间
+  
+  // 社交与展示
+  likes        Int       @default(0)
+  isPublic     Boolean   @default(true)
+  rotation     Float     @default(0) // 拍立得倾斜角
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([regionId])
+}
+
+model RegionVisit {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  regionId      String    // "yunnan", "sichuan"
+  countryCode   String    @default("CN")
+  totalMemories Int       @default(0)
+  daysSpent     Int       @default(1)
+  firstVisitAt  DateTime  @default(now())
+  lastVisitAt   DateTime  @default(now())
+
+  @@unique([userId, regionId])
+  @@index([userId])
+}
+
+model AgentSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentType String   // "orchestrator" | "chat" | "planner"
+  messages  Json     // 存储多轮对话和 Agent 思考链
+  context   Json?    // 当前旅行上下文画像
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}

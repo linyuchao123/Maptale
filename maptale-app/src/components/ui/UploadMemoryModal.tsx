@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMapStore } from '@/store/mapStore'
+import { aiApi } from '@/api/client'
 
 interface UploadMemoryModalProps {
   isOpen: boolean
@@ -21,12 +22,29 @@ export function UploadMemoryModal({ isOpen, onClose }: UploadMemoryModalProps) {
     setPreviewUrl('https://images.unsplash.com/photo-1548013146-72479768bada?q=80&w=800&auto=format&fit=crop')
   }
 
-  const handleStartAiGenerate = () => {
+  const handleStartAiGenerate = async () => {
     setStep('ai_generating')
+    try {
+      const res: any = await aiApi.processMemory({
+        imageUrl: previewUrl || 'https://images.unsplash.com/photo-1548013146-72479768bada?q=80&w=800&auto=format&fit=crop',
+        hintText: locationName
+      })
+
+      const story = res?.data?.story?.story
+      if (story) {
+        setDiaryNote(story)
+        setStep('success')
+        return
+      }
+    } catch (err) {
+      console.warn('[UploadMemoryModal] 后端多智能体流水线调用异常，使用本地手帐模型')
+    }
+
+    // 本地后备
     setTimeout(() => {
       setDiaryNote('晨光熹微的白沙古镇，抬头就是玉龙雪山晶莹的峰峦。老街青石板泛着清亮的光，院子里阿婆正晒着草药。时光在这里走得极慢，慢到只剩微风和心跳。')
       setStep('success')
-    }, 1600)
+    }, 1500)
   }
 
   const handleComplete = () => {
