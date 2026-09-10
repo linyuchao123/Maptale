@@ -1,93 +1,178 @@
+import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { useMapStore } from '@/store/mapStore'
 import { USER_STATS } from '@/data/travelData'
 
-interface SidebarProps {
-  className?: string
-}
+const NAV_ITEMS = [
+  { icon: '🌍', label: '我的地图',   active: true  },
+  { icon: '👥', label: '发现社区',  active: false },
+  { icon: '🤖', label: 'AI 助手',   active: false },
+  { icon: '📷', label: '旅行相册',  active: false },
+  { icon: '📅', label: '旅行计划',  active: false },
+  { icon: '⭐', label: '愿望清单',  active: false },
+]
 
-export function Sidebar({ className = '' }: SidebarProps) {
+export function Sidebar() {
+  const [activeNav, setActiveNav] = useState('我的地图')
+  const { layer } = useMapStore()
+
   return (
-    <aside className={`flex flex-col gap-4 w-52 flex-shrink-0 ${className}`}>
-      {/* 用户信息卡 */}
-      <div className="glass-card p-5 flex flex-col items-center gap-3">
-        {/* 头像 */}
-        <div className="relative">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center text-3xl
-                       bg-gradient-to-br from-pink-200 to-purple-200
-                       shadow-mt-glow-coral cursor-pointer
-                       transition-transform duration-300 hover:scale-110"
-          >
-            {USER_STATS.avatar}
-          </div>
-          {/* 等级徽章 */}
-          <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-            Lv.{USER_STATS.level}
-          </div>
-        </div>
-        <div className="text-center">
-          <p className="font-semibold text-gray-700 text-sm">{USER_STATS.name}</p>
-          <p className="text-xs text-purple-400 mt-0.5">✨ {USER_STATS.levelName}</p>
-        </div>
-      </div>
+    <aside className="flex flex-col gap-3 w-[200px] flex-shrink-0 h-full overflow-y-auto pr-0.5">
 
-      {/* 统计数字 */}
-      <div className="glass-card p-4">
-        <p className="text-xs text-gray-400 mb-3 font-medium uppercase tracking-wide">我的足迹</p>
-        <div className="grid grid-cols-2 gap-2">
-          <StatBadge num={USER_STATS.visitedCountries} label="走过国家" color="text-purple-500" />
-          <StatBadge num={USER_STATS.visitedRegions} label="走过省份" color="text-pink-500" />
-          <StatBadge num={USER_STATS.totalMemories} label="旅行记忆" color="text-sky-500" />
-          <StatBadge num={USER_STATS.totalDays} label="旅行天数" color="text-amber-500" />
+      {/* ── Logo ── */}
+      <motion.div
+        className="flex items-center gap-2 px-2 pt-1 pb-2"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400
+                        flex items-center justify-center text-base shadow-md">
+          🗺️
         </div>
-      </div>
+        <span className="font-bold text-gray-700 text-base tracking-tight">Maptale</span>
+      </motion.div>
 
-      {/* 中国探索进度 */}
-      <div className="glass-card p-4">
-        <div className="flex justify-between items-center mb-2">
-          <p className="text-xs text-gray-500 font-medium">🇨🇳 中国探索进度</p>
-          <p className="text-lg font-bold text-amber-500">{USER_STATS.chinaExplorePercent}%</p>
+      {/* ── 用户信息卡 ── */}
+      <motion.div
+        className="glass-card p-4"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <div className="flex items-center gap-3">
+          {/* 头像 */}
+          <div className="relative flex-shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pink-200 to-purple-200
+                            flex items-center justify-center text-xl
+                            ring-2 ring-white shadow-md">
+              {USER_STATS.avatar}
+            </div>
+            <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-purple-400 to-pink-400
+                            text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+              {USER_STATS.level}
+            </div>
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-700 text-sm leading-tight truncate">
+              {USER_STATS.name}
+            </p>
+            <p className="text-[11px] text-purple-400 mt-0.5">✨ {USER_STATS.levelName}</p>
+          </div>
         </div>
-        <div className="h-2 bg-purple-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full transition-all duration-1000"
-            style={{ width: `${USER_STATS.chinaExplorePercent}%` }}
+      </motion.div>
+
+      {/* ── 足迹统计 ── */}
+      <motion.div
+        className="glass-card p-3.5"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2.5">
+          🌏 我的足迹
+        </p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {[
+            { num: USER_STATS.visitedCountries, label: '国家', color: 'from-violet-400 to-purple-400', icon: '🗺️' },
+            { num: USER_STATS.visitedRegions,   label: '省份', color: 'from-pink-400 to-rose-400',    icon: '📍' },
+            { num: USER_STATS.totalMemories,    label: '记忆', color: 'from-sky-400 to-blue-400',     icon: '📷' },
+            { num: USER_STATS.totalDays,        label: '天数', color: 'from-amber-400 to-orange-400', icon: '☀️' },
+          ].map((s) => (
+            <div key={s.label}
+              className="relative overflow-hidden bg-white/50 rounded-xl p-2.5 text-center group hover:bg-white/70 transition-colors cursor-default">
+              <div className={`absolute inset-0 bg-gradient-to-br ${s.color} opacity-0 group-hover:opacity-5 transition-opacity`} />
+              <p className={`text-lg font-bold bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>
+                {s.num}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{s.icon} {s.label}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ── 中国拼图进度 ── */}
+      <motion.div
+        className="glass-card p-3.5"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] text-gray-500 font-medium">🇨🇳 中国拼图</span>
+          <span className="text-sm font-bold text-amber-500">{USER_STATS.chinaExplorePercent}%</span>
+        </div>
+        <div className="h-1.5 bg-purple-100 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${USER_STATS.chinaExplorePercent}%` }}
+            transition={{ duration: 1.2, delay: 0.5, ease: 'easeOut' }}
           />
         </div>
-        <p className="text-[10px] text-gray-400 mt-1.5">已拼凑 {USER_STATS.visitedRegions}/34 块省份拼图</p>
-      </div>
+        <p className="text-[10px] text-gray-400 mt-1.5">
+          {USER_STATS.visitedRegions} / 34 个省份已解锁
+        </p>
+      </motion.div>
 
-      {/* 导航菜单 */}
-      <div className="glass-card p-3 flex flex-col gap-1">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.label}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-600
-                       hover:bg-purple-50 hover:text-purple-600 transition-all duration-200
-                       text-left font-medium"
-          >
-            <span className="text-base">{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
-      </div>
+      {/* ── 导航菜单 ── */}
+      <motion.div
+        className="glass-card p-2 flex flex-col gap-0.5"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        {NAV_ITEMS.map((item, i) => {
+          const isActive = activeNav === item.label
+          return (
+            <motion.button
+              key={item.label}
+              onClick={() => setActiveNav(item.label)}
+              className={`relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium
+                          transition-all duration-200 text-left w-full overflow-hidden
+                          ${isActive
+                            ? 'text-purple-700'
+                            : 'text-gray-500 hover:text-purple-500 hover:bg-purple-50/60'
+                          }`}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 + i * 0.04 }}
+              whileHover={{ x: 2 }}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="nav-active"
+                  className="absolute inset-0 bg-gradient-to-r from-purple-100/80 to-pink-50/60 rounded-xl"
+                  transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                />
+              )}
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5
+                                bg-gradient-to-b from-purple-400 to-pink-400 rounded-full" />
+              )}
+              <span className="relative text-base">{item.icon}</span>
+              <span className="relative text-[13px]">{item.label}</span>
+            </motion.button>
+          )
+        })}
+      </motion.div>
+
+      {/* ── 层级状态提示 ── */}
+      {layer !== 'globe' && (
+        <motion.div
+          className="glass-card p-3 border border-purple-200/40"
+          style={{ background: 'linear-gradient(135deg, rgba(196,181,253,0.12), rgba(249,168,212,0.08))' }}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <p className="text-[10px] text-purple-400 font-medium mb-1">当前探索</p>
+          <p className="text-xs text-gray-600 font-semibold">
+            {layer === 'country' && '🇨🇳 中国 · 省份地图'}
+            {layer === 'region' && '🌸 云南省 · 景点详情'}
+            {layer === 'attraction' && '📍 景点 · 旅行回忆'}
+          </p>
+        </motion.div>
+      )}
     </aside>
   )
 }
-
-function StatBadge({ num, label, color }: { num: number; label: string; color: string }) {
-  return (
-    <div className="bg-white/60 rounded-2xl p-2.5 text-center">
-      <p className={`text-xl font-bold ${color}`}>{num}</p>
-      <p className="text-[10px] text-gray-400 mt-0.5">{label}</p>
-    </div>
-  )
-}
-
-const NAV_ITEMS = [
-  { icon: '🌍', label: '我的地图' },
-  { icon: '👥', label: '发现社区' },
-  { icon: '🤖', label: 'AI 旅行助手' },
-  { icon: '📷', label: '旅行相册' },
-  { icon: '📅', label: '旅行计划' },
-  { icon: '⭐', label: '愿望清单' },
-]

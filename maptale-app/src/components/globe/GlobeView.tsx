@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useMapStore } from '@/store/mapStore'
 import { COUNTRIES_DATA } from '@/data/travelData'
@@ -22,11 +22,31 @@ const MEMORY_POINTS = [
   { lat:  1.4, lng: 103.8, label: '新加坡', emoji: '🦁', color: '#a7f3d0' },
 ]
 
+// 国家卡片彩色竖条颜色
+const CARD_ACCENT_COLORS = [
+  'linear-gradient(180deg, #f9a8d4, #f472b6)',
+  'linear-gradient(180deg, #c4b5fd, #a78bfa)',
+  'linear-gradient(180deg, #6ee7b7, #34d399)',
+  'linear-gradient(180deg, #fde68a, #fbbf24)',
+  'linear-gradient(180deg, #93c5fd, #60a5fa)',
+]
+
+// 6 个绕轨光点配置
+const ORBIT_DOTS = [
+  { radius: 240, angle: 0,   size: 8,  color: '#f9a8d4', blur: 6,  duration: 7 },
+  { radius: 260, angle: 60,  size: 6,  color: '#c4b5fd', blur: 5,  duration: 9 },
+  { radius: 250, angle: 120, size: 10, color: '#fde68a', blur: 8,  duration: 11 },
+  { radius: 245, angle: 180, size: 7,  color: '#a7f3d0', blur: 6,  duration: 8 },
+  { radius: 255, angle: 240, size: 5,  color: '#93c5fd', blur: 4,  duration: 10 },
+  { radius: 248, angle: 300, size: 9,  color: '#f9a8d4', blur: 7,  duration: 6 },
+]
+
 export function GlobeView() {
   const canvasRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const globeRef = useRef<any>(null)
   const { drillDown, visitedCountries } = useMapStore()
+  const [isLoading, setIsLoading] = useState(true)
 
   const initGlobe = useCallback(async () => {
     if (!canvasRef.current || globeRef.current) return
@@ -50,9 +70,9 @@ export function GlobeView() {
       .height(canvasRef.current.clientHeight)
 
     // ── 已访问国家高亮（多边形层） ──
-    // 使用 GeoJSON 数据（从 CDN 加载）
     const geoRes = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
     if (geoRes.ok) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const topoData = await geoRes.json()
       // 简化：用 label 层代替多边形层显示访问状态
     }
@@ -114,6 +134,9 @@ export function GlobeView() {
     })
 
     globeRef.current = globe
+
+    // Globe 初始化完成，关闭 loading
+    setIsLoading(false)
   }, [drillDown, visitedCountries])
 
   useEffect(() => {
@@ -152,41 +175,189 @@ export function GlobeView() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sky-100/20 rounded-full blur-3xl" />
       </div>
 
+      {/* ── Loading 画面 ── */}
+      {isLoading && (
+        <motion.div
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #fdf4ff 0%, #fce7f3 50%, #ede9fe 100%)' }}
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* 大圆形 loading 容器 */}
+          <div className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
+            {/* 外层旋转圆圈 */}
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{
+                border: '4px solid transparent',
+                borderTopColor: '#f9a8d4',
+                borderRightColor: '#c4b5fd',
+              }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+            />
+            {/* 中间旋转圆圈（反向，略小） */}
+            <motion.div
+              className="absolute rounded-full"
+              style={{
+                inset: 14,
+                border: '3px solid transparent',
+                borderTopColor: '#c4b5fd',
+                borderLeftColor: '#f9a8d4',
+              }}
+              animate={{ rotate: -360 }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
+            />
+            {/* 内圆背景 */}
+            <div
+              className="absolute rounded-full flex flex-col items-center justify-center"
+              style={{
+                inset: 28,
+                background: 'linear-gradient(135deg, #fff0f8, #f3e8ff)',
+                boxShadow: '0 0 30px rgba(196,181,253,0.4), 0 0 60px rgba(249,168,212,0.2)',
+              }}
+            >
+              <span style={{ fontSize: 36 }}>🌍</span>
+            </div>
+          </div>
+          {/* 文字 */}
+          <motion.p
+            className="mt-6 text-base font-semibold"
+            style={{ color: '#a78bfa', letterSpacing: '0.05em' }}
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            加载你的旅行地图...
+          </motion.p>
+          {/* 进度点 */}
+          <div className="flex gap-2 mt-3">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-2 h-2 rounded-full"
+                style={{ background: 'linear-gradient(135deg, #f9a8d4, #c4b5fd)' }}
+                animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 1, repeat: Infinity, delay: i * 0.3 }}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Globe 容器 */}
       <div ref={canvasRef} className="w-full h-full" />
 
-      {/* 浮动国家信息提示（右侧） */}
-      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3">
-        {Object.values(COUNTRIES_DATA).slice(0, 5).map((country, i) => (
-          <motion.button
-            key={country.code}
-            className="glass-card p-3 flex items-center gap-2 text-left hover:shadow-mt-card-hover transition-all duration-300 cursor-pointer"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 + i * 0.08 }}
-            onClick={() => drillDown('country', country)}
-            whileHover={{ scale: 1.03, x: -4 }}
-          >
-            <span className="text-2xl">{country.flag}</span>
-            <div>
-              <p className="text-sm font-semibold text-gray-700">{country.name}</p>
-              <p className="text-[10px] text-gray-400">{country.memoriesCount} 个记忆</p>
-            </div>
-          </motion.button>
-        ))}
-      </div>
+      {/* ── 6 个绕轨旋转光点 ── */}
+      {!isLoading && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          {ORBIT_DOTS.map((dot, i) => (
+            <motion.div
+              key={i}
+              className="absolute"
+              style={{
+                width: dot.size,
+                height: dot.size,
+                borderRadius: '50%',
+                background: dot.color,
+                boxShadow: `0 0 ${dot.blur * 2}px ${dot.blur}px ${dot.color}`,
+                x: dot.radius * Math.cos((dot.angle * Math.PI) / 180),
+                y: dot.radius * Math.sin((dot.angle * Math.PI) / 180),
+                originX: `${-dot.radius * Math.cos((dot.angle * Math.PI) / 180) + dot.size / 2}px`,
+                originY: `${-dot.radius * Math.sin((dot.angle * Math.PI) / 180) + dot.size / 2}px`,
+              }}
+              animate={{ rotateZ: [0, 360] }}
+              transition={{
+                duration: dot.duration,
+                repeat: Infinity,
+                ease: 'linear',
+                delay: i * 0.4,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* 底部提示 */}
-      <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 glass-card px-5 py-2.5 text-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-      >
-        <p className="text-sm text-gray-500">
-          🌍 点击地球上的国家，进入你的旅行记忆
-        </p>
-      </motion.div>
+      {/* ── 右侧国家卡片（升级版） ── */}
+      {!isLoading && (
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3">
+          {Object.values(COUNTRIES_DATA).slice(0, 5).map((country, i) => {
+            const visited = country.memoriesCount ?? 0
+            const total = 10
+            const progress = Math.min((visited / total) * 100, 100)
+            const accentColor = CARD_ACCENT_COLORS[i % CARD_ACCENT_COLORS.length]
+
+            return (
+              <motion.button
+                key={country.code}
+                className="glass-card flex items-stretch text-left cursor-pointer overflow-hidden"
+                style={{ padding: 0 }}
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + i * 0.08 }}
+                onClick={() => drillDown('country', country)}
+                whileHover={{
+                  scale: 1.04,
+                  x: -4,
+                  boxShadow: '0 8px 32px rgba(196,181,253,0.45), 0 2px 12px rgba(249,168,212,0.35)',
+                }}
+              >
+                {/* 彩色竖条 */}
+                <div
+                  style={{
+                    width: 5,
+                    flexShrink: 0,
+                    background: accentColor,
+                    borderRadius: '6px 0 0 6px',
+                  }}
+                />
+                {/* 内容区 */}
+                <div className="flex items-center gap-2 p-3 flex-1">
+                  <span className="text-2xl">{country.flag}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-700 truncate">{country.name}</p>
+                    <p className="text-[10px] text-gray-400 mb-1">{visited} 个记忆</p>
+                    {/* 迷你进度条 */}
+                    <div
+                      className="w-full rounded-full overflow-hidden"
+                      style={{ height: 4, background: 'rgba(196,181,253,0.2)' }}
+                    >
+                      <motion.div
+                        style={{
+                          height: '100%',
+                          background: accentColor,
+                          borderRadius: 9999,
+                        }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ duration: 0.8, delay: 0.5 + i * 0.1, ease: 'easeOut' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── 底部 hint 文字（animate pulse） ── */}
+      {!isLoading && (
+        <motion.div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 glass-card px-5 py-2.5 text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+        >
+          <motion.p
+            className="text-sm text-gray-500"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            🌍 点击地球上的国家，进入你的旅行记忆
+          </motion.p>
+        </motion.div>
+      )}
 
       {/* 浮动花瓣装饰 */}
       {['🌸', '⭐', '✨', '🌟', '💫'].map((petal, i) => (
