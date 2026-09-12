@@ -156,13 +156,68 @@ export function UploadMemoryModal({ isOpen, onClose }: UploadMemoryModalProps) {
           )}
 
           {step === 'ai_generating' && (
-            <div className="py-10 flex flex-col items-center justify-center text-center space-y-3">
-              <motion.div
-                className="w-16 h-16 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin"
-                style={{ borderRightColor: '#f9a8d4' }}
-              />
-              <p className="text-sm font-bold text-gray-700">小旅正在解析照片光影与故事...</p>
-              <p className="text-xs text-purple-400">正在生成拍立得日记随笔 · 匹配地图图钉</p>
+            <div className="py-6 flex flex-col space-y-4">
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100/80 text-purple-700 text-xs font-semibold mb-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-600 animate-ping" />
+                  <span>多智能体协作流水线运转中</span>
+                </div>
+                <h4 className="text-sm font-bold text-gray-800">「小旅协同脑」正在拼凑你的旅行记忆</h4>
+              </div>
+
+              {/* 4 大智能体协同脉络卡片 */}
+              <div className="space-y-2.5">
+                {[
+                  {
+                    icon: '👁️',
+                    name: 'VisionAgent · 视觉多模态 (Qwen-VL)',
+                    desc: '分析照片色彩构成、光影走向与画面主体元素...',
+                    status: 'active',
+                    color: 'from-pink-500 to-rose-400'
+                  },
+                  {
+                    icon: '📍',
+                    name: 'LocationAgent · 空间定位智能体',
+                    desc: '逆地理编码定位，匹配中国省份拼图【云南省 +1】...',
+                    status: 'active',
+                    color: 'from-purple-500 to-indigo-400'
+                  },
+                  {
+                    icon: '✍️',
+                    name: 'StoryAgent · 游记文学创作者 (DeepSeek)',
+                    desc: '融合视觉与地理文化，谱写第一人称诗意手帐随笔...',
+                    status: 'active',
+                    color: 'from-amber-500 to-orange-400'
+                  },
+                  {
+                    icon: '🧭',
+                    name: 'Orchestrator · 总控协调智能体',
+                    desc: '装配拍立得卡片、点亮地图拼图并存入人生档案...',
+                    status: 'waiting',
+                    color: 'from-emerald-500 to-teal-400'
+                  },
+                ].map((agent, i) => (
+                  <motion.div
+                    key={agent.name}
+                    className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100 flex items-center justify-between"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.15 }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-lg p-1.5 bg-white rounded-lg shadow-xs flex-shrink-0">{agent.icon}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-800 truncate">{agent.name}</p>
+                        <p className="text-[10px] text-gray-500 truncate">{agent.desc}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-[10px] text-purple-600 font-medium">协同中</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           )}
 

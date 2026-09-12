@@ -35,9 +35,13 @@ export interface AttractionInfo {
   memoriesCount: number
 }
 
+export type MainTab = 'map' | 'community' | 'assistant' | 'album' | 'plan' | 'wishlist'
+
 // ── 应用全局状态 ──
 interface MapState {
-  // 当前层级
+  // 当前顶层主导航
+  activeTab: MainTab
+  // 当前层级（地图主视图内）
   layer: MapLayer
   // 导航历史（面包屑用）
   breadcrumb: Array<{ label: string; emoji: string; layer: MapLayer; id?: string }>
@@ -52,12 +56,14 @@ interface MapState {
   isTransitioning: boolean
 
   // Actions
+  setActiveTab: (tab: MainTab) => void
   drillDown: (layer: MapLayer, data: CountryInfo | RegionInfo | AttractionInfo) => void
   drillUp: (targetLayer: MapLayer) => void
   setTransitioning: (v: boolean) => void
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
+  activeTab: 'map',
   layer: 'globe',
   breadcrumb: [{ label: '地球', emoji: '🌍', layer: 'globe' }],
   selectedCountry: null,
@@ -66,6 +72,8 @@ export const useMapStore = create<MapState>((set, get) => ({
   visitedCountries: new Set(['CN', 'JP', 'TH', 'FR', 'IT', 'US', 'SG', 'MY', 'KR', 'AU']),
   visitedRegions: new Set(['yunnan', 'sichuan', 'beijing', 'shanghai', 'guangdong', 'zhejiang', 'hunan', 'shanxi', 'guangxi', 'chongqing', 'jiangsu', 'shandong', 'anhui', 'liaoning', 'hainan']),
   isTransitioning: false,
+
+  setActiveTab: (tab) => set({ activeTab: tab }),
 
   drillDown: (layer, data) => {
     const state = get()

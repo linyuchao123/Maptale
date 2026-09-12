@@ -1,20 +1,19 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
-import { useMapStore } from '@/store/mapStore'
+import { useMapStore, type MainTab } from '@/store/mapStore'
 import { USER_STATS } from '@/data/travelData'
 
-const NAV_ITEMS = [
-  { icon: '🌍', label: '我的地图',   active: true  },
-  { icon: '👥', label: '发现社区',  active: false },
-  { icon: '🤖', label: 'AI 助手',   active: false },
-  { icon: '📷', label: '旅行相册',  active: false },
-  { icon: '📅', label: '旅行计划',  active: false },
-  { icon: '⭐', label: '愿望清单',  active: false },
+const NAV_ITEMS: Array<{ icon: string; label: string; tab: MainTab }> = [
+  { icon: '🌍', label: '我的地图',   tab: 'map' },
+  { icon: '👥', label: '发现社区',  tab: 'community' },
+  { icon: '🤖', label: 'AI 规划大厅', tab: 'assistant' },
+  { icon: '📷', label: '旅行相册',  tab: 'album' },
+  { icon: '📅', label: '旅行计划',  tab: 'plan' },
+  { icon: '⭐', label: '愿望清单',  tab: 'wishlist' },
 ]
 
 export function Sidebar() {
-  const [activeNav, setActiveNav] = useState('我的地图')
-  const { layer } = useMapStore()
+  const { layer, activeTab, setActiveTab } = useMapStore()
 
   return (
     <aside className="flex flex-col gap-3 w-[200px] flex-shrink-0 h-full overflow-y-auto pr-0.5">
@@ -123,11 +122,11 @@ export function Sidebar() {
         transition={{ delay: 0.25 }}
       >
         {NAV_ITEMS.map((item, i) => {
-          const isActive = activeNav === item.label
+          const isActive = activeTab === item.tab
           return (
             <motion.button
-              key={item.label}
-              onClick={() => setActiveNav(item.label)}
+              key={item.tab}
+              onClick={() => setActiveTab(item.tab)}
               className={`relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium
                           transition-all duration-200 text-left w-full overflow-hidden
                           ${isActive

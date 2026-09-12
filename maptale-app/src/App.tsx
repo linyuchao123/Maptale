@@ -6,6 +6,9 @@ import { GlobeView } from '@/components/globe/GlobeView'
 import { ChinaMapView } from '@/components/map/ChinaMapView'
 import { RegionView } from '@/components/map/RegionView'
 import { AttractionView } from '@/components/map/AttractionView'
+import { CommunityView } from '@/components/community/CommunityView'
+import { AgentWorkbenchView } from '@/components/assistant/AgentWorkbenchView'
+import { AlbumTimelineView } from '@/components/album/AlbumTimelineView'
 import { XiaoluAssistant } from '@/components/assistant/XiaoluAssistant'
 import { UploadMemoryModal } from '@/components/ui/UploadMemoryModal'
 import { useMapStore } from '@/store/mapStore'
@@ -18,7 +21,7 @@ const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
 }
 
 export default function App() {
-  const { layer, breadcrumb } = useMapStore()
+  const { layer, breadcrumb, activeTab, setActiveTab } = useMapStore()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const pageInfo = PAGE_TITLES[layer]
 
@@ -50,7 +53,29 @@ export default function App() {
           {/* 左侧：面包屑 or 标题 */}
           <div className="flex flex-col gap-0.5 min-w-0">
             <AnimatePresence mode="wait">
-              {breadcrumb.length > 1 ? (
+              {activeTab !== 'map' ? (
+                <motion.div
+                  key="tab-crumb"
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                >
+                  <button
+                    onClick={() => setActiveTab('map')}
+                    className="glass-card-sm px-3 py-1.5 text-xs text-purple-600 font-medium hover:bg-white transition-all flex items-center gap-1.5"
+                  >
+                    <span>🌍</span>
+                    <span>我的地图</span>
+                  </button>
+                  <span className="text-gray-300 text-xs">/</span>
+                  <span className="text-xs font-bold text-gray-700">
+                    {activeTab === 'community' && '👥 发现社区'}
+                    {(activeTab === 'assistant' || activeTab === 'plan') && '🤖 AI 规划大厅'}
+                    {(activeTab === 'album' || activeTab === 'wishlist') && '📷 旅行相册'}
+                  </span>
+                </motion.div>
+              ) : breadcrumb.length > 1 ? (
                 <motion.div
                   key="breadcrumb"
                   initial={{ opacity: 0, y: -6 }}
@@ -140,55 +165,106 @@ export default function App() {
         {/* 顶部分割线 */}
         <div className="h-px bg-gradient-to-r from-transparent via-purple-200/30 to-transparent flex-shrink-0 mx-6" />
 
-        {/* 页面内容 — 层级切换 */}
+        {/* 页面内容 — 主视图与层级切换 */}
         <div className="flex-1 overflow-hidden relative">
           <AnimatePresence mode="wait">
-            {layer === 'globe' && (
+            {activeTab === 'map' && (
               <motion.div
-                key="globe"
+                key="map-container"
                 className="absolute inset-0"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.4 }}
               >
-                <GlobeView />
+                <AnimatePresence mode="wait">
+                  {layer === 'globe' && (
+                    <motion.div
+                      key="globe"
+                      className="absolute inset-0"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <GlobeView />
+                    </motion.div>
+                  )}
+                  {layer === 'country' && (
+                    <motion.div
+                      key="country"
+                      className="absolute inset-0"
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.04 }}
+                      transition={{ duration: 0.45, ease: 'easeOut' }}
+                    >
+                      <ChinaMapView />
+                    </motion.div>
+                  )}
+                  {layer === 'region' && (
+                    <motion.div
+                      key="region"
+                      className="absolute inset-0"
+                      initial={{ opacity: 0, x: 40 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -40 }}
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                    >
+                      <RegionView />
+                    </motion.div>
+                  )}
+                  {layer === 'attraction' && (
+                    <motion.div
+                      key="attraction"
+                      className="absolute inset-0"
+                      initial={{ opacity: 0, x: 40 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -40 }}
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                    >
+                      <AttractionView />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
-            {layer === 'country' && (
+
+            {activeTab === 'community' && (
               <motion.div
-                key="country"
+                key="community"
                 className="absolute inset-0"
-                initial={{ opacity: 0, scale: 0.96 }}
+                initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.04 }}
-                transition={{ duration: 0.45, ease: 'easeOut' }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3 }}
               >
-                <ChinaMapView />
+                <CommunityView />
               </motion.div>
             )}
-            {layer === 'region' && (
+
+            {(activeTab === 'assistant' || activeTab === 'plan') && (
               <motion.div
-                key="region"
+                key="assistant"
                 className="absolute inset-0"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.4, ease: 'easeOut' }}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3 }}
               >
-                <RegionView />
+                <AgentWorkbenchView />
               </motion.div>
             )}
-            {layer === 'attraction' && (
+
+            {(activeTab === 'album' || activeTab === 'wishlist') && (
               <motion.div
-                key="attraction"
+                key="album"
                 className="absolute inset-0"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.4, ease: 'easeOut' }}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3 }}
               >
-                <AttractionView />
+                <AlbumTimelineView />
               </motion.div>
             )}
           </AnimatePresence>

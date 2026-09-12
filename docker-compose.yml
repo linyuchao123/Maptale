@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # 后端多智能体服务
+  server:
+    build:
+      context: ./maptale-server
+      dockerfile: Dockerfile
+    container_name: maptale-server
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./maptale-server/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - maptale-network
+
+  # 前端应用与 Nginx 反向代理
+  web:
+    build:
+      context: ./maptale-app
+      dockerfile: Dockerfile
+    container_name: maptale-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - maptale-network
+
+  # Redis 智能体上下文与高频缓存
+  redis:
+    image: redis:7-alpine
+    container_name: maptale-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - maptale-network
+
+volumes:
+  redis-data:
+
+networks:
+  maptale-network:
+    driver: bridge
